@@ -347,13 +347,13 @@ Status DBImpl::Recover(
           return s;
         }
       } else {
-		env_->DeleteFile(LockFileName(dbname_));
-		std::string db_absolute_path;
-		env_->GetAbsolutePath(dbname_, &db_absolute_path);
-		std::string logfname =
-			InfoLogFileName(dbname_, db_absolute_path, immutable_db_options_.db_log_dir);
-		env_->DeleteFile(logfname);
-		env_->DeleteDir(dbname_);
+        env_->DeleteFile(LockFileName(dbname_));
+        std::string db_absolute_path;
+        env_->GetAbsolutePath(dbname_, &db_absolute_path);
+        std::string logfname =
+            InfoLogFileName(dbname_, db_absolute_path, immutable_db_options_.db_log_dir);
+        env_->DeleteFile(logfname);
+        env_->DeleteDir(dbname_);
         return Status::InvalidArgument(
             dbname_, "does not exist (create_if_missing is false)");
       }
