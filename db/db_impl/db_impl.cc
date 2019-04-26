@@ -150,7 +150,9 @@ DBImpl::DBImpl(const DBOptions& options, const std::string& dbname,
     : env_(options.env),
       dbname_(dbname),
       own_info_log_(options.info_log == nullptr),
-      initial_db_options_(SanitizeOptions(dbname, options)),
+      initial_db_options_(SanitizeOptions(dbname, options,
+										  &created_db_dir_,
+										  &created_info_log_file_)),
       immutable_db_options_(initial_db_options_),
       mutable_db_options_(initial_db_options_),
       stats_(immutable_db_options_.statistics.get()),
@@ -627,7 +629,14 @@ const Status DBImpl::CreateArchivalDirectory() {
   if (immutable_db_options_.wal_ttl_seconds > 0 ||
       immutable_db_options_.wal_size_limit_mb > 0) {
     std::string archivalPath = ArchivalDirectory(immutable_db_options_.wal_dir);
-    return env_->CreateDirIfMissing(archivalPath);
+    bool archival_dir_created = env_->FileExists(archivalPath).IsNotFound();
+    Status s = env_->CreateDirIfMissing(archivalPath);
+    if (s.ok()) {
+      if (archival_dir_created) {
+        created_archive_dir_ = archivalPath;
+      }
+    }
+    return s;
   }
   return Status::OK();
 }
