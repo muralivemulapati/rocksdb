@@ -771,6 +771,14 @@ class DBImpl : public DB {
   std::unique_ptr<VersionSet> versions_;
   // Flag to check whether we allocated and own the info log file
   bool own_info_log_;
+  // Keep track of directories created during Open(). These will be deleted
+  // if Open() fails.
+  std::string created_info_log_file_;
+  std::vector<std::string> created_sst_dirs_;
+  std::string created_archive_dir_;
+  std::string created_wal_dir_;
+  std::string created_db_dir_;
+	
   const DBOptions initial_db_options_;
   const ImmutableDBOptions immutable_db_options_;
   MutableDBOptions mutable_db_options_;

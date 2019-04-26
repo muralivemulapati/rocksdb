@@ -31,7 +31,9 @@ Options SanitizeOptions(const std::string& dbname, const Options& src) {
   return Options(db_options, cf_options);
 }
 
-DBOptions SanitizeOptions(const std::string& dbname, const DBOptions& src) {
+DBOptions SanitizeOptions(const std::string& dbname, const DBOptions& src,
+						  std::string* created_db_dir,
+						  std::string* created_info_log_file) {
   DBOptions result(src);
 
   // result.max_open_files means an "infinite" open files.
@@ -46,7 +48,8 @@ DBOptions SanitizeOptions(const std::string& dbname, const DBOptions& src) {
   }
 
   if (result.info_log == nullptr) {
-    Status s = CreateLoggerFromOptions(dbname, result, &result.info_log);
+	  Status s = CreateLoggerFromOptions(dbname, result, &result.info_log,
+										 created_db_dir, created_info_log_file);
     if (!s.ok()) {
       // No place suitable for logging
       result.info_log = nullptr;
@@ -347,13 +350,7 @@ Status DBImpl::Recover(
           return s;
         }
       } else {
-        env_->DeleteFile(LockFileName(dbname_));
-        std::string db_absolute_path;
-        env_->GetAbsolutePath(dbname_, &db_absolute_path);
-        std::string logfname =
-            InfoLogFileName(dbname_, db_absolute_path, immutable_db_options_.db_log_dir);
-        env_->DeleteFile(logfname);
-        env_->DeleteDir(dbname_);
+		CleanupFailedOpen();
         return Status::InvalidArgument(
             dbname_, "does not exist (create_if_missing is false)");
       }
@@ -523,6 +520,32 @@ Status DBImpl::Recover(
   }
 
   return s;
+}
+
+void DBImpl::CleanupFailedOpen() {
+	if (!created_info_log_file_.empty()) {
+		env_->DeleteFile(created_info_log_file_);
+	}
+
+	for (const auto& path : created_sst_dirs_) {
+		env_->DeleteDir(path);
+	}
+	
+	if (!created_archive_dir_.empty()) {
+		env_->DeleteDir(created_archive_dir_);
+	}
+
+	if (!created_wal_dir_.empty()) {
+		env_->DeleteDir(created_wal_dir_);
+	}
+
+	env_->UnlockFile(db_lock_);
+	db_lock_ = nullptr;
+	env_->DeleteFile(LockFileName(dbname_));
+
+	if (!created_db_dir_.empty()) {
+		env_->DeleteDir(created_db_dir_);
+	}
 }
 
 // REQUIRES: log_numbers are sorted in ascending order
@@ -1176,8 +1199,13 @@ Status DBImpl::Open(const DBOptions& db_options, const std::string& dbname,
   }
 
   DBImpl* impl = new DBImpl(db_options, dbname, seq_per_batch, batch_per_txn);
+  bool wal_dir_created = impl->env_->FileExists(impl->immutable_db_options_.wal_dir).IsNotFound();
   s = impl->env_->CreateDirIfMissing(impl->immutable_db_options_.wal_dir);
   if (s.ok()) {
+    if (wal_dir_created) {
+      impl->created_wal_dir_ = impl->immutable_db_options_.wal_dir;
+    }
+      
     std::vector<std::string> paths;
     for (auto& db_path : impl->immutable_db_options_.db_paths) {
       paths.emplace_back(db_path.path);
@@ -1188,9 +1216,13 @@ Status DBImpl::Open(const DBOptions& db_options, const std::string& dbname,
       }
     }
     for (auto& path : paths) {
+      bool path_created = impl->env_->FileExists(path).IsNotFound();
       s = impl->env_->CreateDirIfMissing(path);
       if (!s.ok()) {
         break;
+      }
+      if (path_created) {
+          impl->created_sst_dirs_.emplace_back(path);
       }
     }
 
