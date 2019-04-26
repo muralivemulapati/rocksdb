@@ -1107,6 +1107,11 @@ class DBImpl : public DB {
       bool read_only = false, bool error_if_log_file_exist = false,
       bool error_if_data_exists_in_logs = false);
 
+  // If Open() fails due to non-existent Current file in database directory
+  // and create_if_missing is false, clean up all the files and directories
+  // created as part of the failed Open().	
+  void  CleanupFailedOpen();
+
  private:
   friend class DB;
   friend class ErrorHandler;
@@ -1968,7 +1973,9 @@ class DBImpl : public DB {
 
 extern Options SanitizeOptions(const std::string& db, const Options& src);
 
-extern DBOptions SanitizeOptions(const std::string& db, const DBOptions& src);
+extern DBOptions SanitizeOptions(const std::string& db, const DBOptions& src,
+                                 std::string* created_db_dir = nullptr,
+                                 std::string* created_info_log_file = nullptr);
 
 extern CompressionType GetCompressionFlush(
     const ImmutableCFOptions& ioptions,
