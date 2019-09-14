@@ -929,6 +929,7 @@ class DBImpl : public DB {
   bool TEST_IsPersistentStatsEnabled() const;
   size_t TEST_EstimateInMemoryStatsHistorySize() const;
 #endif  // NDEBUG
+  enum { kArchiveDirIndex = 0, kWalDirIndex, kDbDirIndex};
 
  protected:
   Env* const env_;
@@ -939,12 +940,9 @@ class DBImpl : public DB {
   bool own_info_log_;
   // Keep track of directories created during Open(). These will be deleted
   // if Open() fails.
-  std::string created_info_log_file_;
-  std::vector<std::string> created_sst_dirs_;
-  std::string created_archive_dir_;
-  std::string created_wal_dir_;
-  std::string created_db_dir_;
-	
+  std::vector<std::string> created_files_;
+  // All the created sst directory names are at the end of the vector	
+  std::vector<std::string> created_dirs_;
   const DBOptions initial_db_options_;
   const ImmutableDBOptions immutable_db_options_;
   MutableDBOptions mutable_db_options_;
@@ -1106,11 +1104,6 @@ class DBImpl : public DB {
       const std::vector<ColumnFamilyDescriptor>& column_families,
       bool read_only = false, bool error_if_log_file_exist = false,
       bool error_if_data_exists_in_logs = false);
-
-  // If Open() fails due to non-existent Current file in database directory
-  // and create_if_missing is false, clean up all the files and directories
-  // created as part of the failed Open().	
-  void  CleanupFailedOpen();
 
  private:
   friend class DB;
@@ -1286,6 +1279,11 @@ class DBImpl : public DB {
   // Required: DB mutex held
   Status PersistentStatsProcessFormatVersion();
 
+  // If Open() fails due to non-existent Current file in database directory
+  // and create_if_missing is false, clean up all the files and directories
+  // created as part of the failed Open().	
+  void  CleanupFailedOpen();
+	
   Status ResumeImpl();
 
   void MaybeIgnoreError(Status* s) const;
@@ -1974,8 +1972,8 @@ class DBImpl : public DB {
 extern Options SanitizeOptions(const std::string& db, const Options& src);
 
 extern DBOptions SanitizeOptions(const std::string& db, const DBOptions& src,
-                                 std::string* created_db_dir = nullptr,
-                                 std::string* created_info_log_file = nullptr);
+								 std::vector<std::string>* created_dirs = nullptr,
+								 std::vector<std::string>* created_files = nullptr);
 
 extern CompressionType GetCompressionFlush(
     const ImmutableCFOptions& ioptions,
