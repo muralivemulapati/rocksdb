@@ -561,6 +561,7 @@ Status DBImpl::Recover(
 }
 
 <<<<<<< HEAD:db/db_impl/db_impl_open.cc
+<<<<<<< HEAD:db/db_impl/db_impl_open.cc
 Status DBImpl::PersistentStatsProcessFormatVersion() {
   mutex_.AssertHeld();
   Status s;
@@ -652,6 +653,8 @@ Status DBImpl::InitPersistStatsColumnFamily() {
   }
   return s;
 =======
+=======
+>>>>>>> cc821fcee9e83fed4b56f2f4df4c289077226c46:db/db_impl_open.cc
 void DBImpl::CleanupFailedOpen() {
 	if (!created_info_log_file_.empty()) {
 		env_->DeleteFile(created_info_log_file_);
@@ -676,7 +679,10 @@ void DBImpl::CleanupFailedOpen() {
 	if (!created_db_dir_.empty()) {
 		env_->DeleteDir(created_db_dir_);
 	}
+<<<<<<< HEAD:db/db_impl/db_impl_open.cc
 >>>>>>> cleanup after failed open:db/db_impl_open.cc
+=======
+>>>>>>> cc821fcee9e83fed4b56f2f4df4c289077226c46:db/db_impl_open.cc
 }
 
 // REQUIRES: log_numbers are sorted in ascending order
